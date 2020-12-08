@@ -91,6 +91,6 @@ print(
     f"Own ID: {own}\n"
     f"Highest ID: {highest}\n\n"
     f"Find highest: {tf(t1-t0)}\n"
-    f"Find own: {tf(t2-t2)}\n"
+    f"Find own: {tf(t2-t1)}\n"
     f"Total: {tf(t2-t0)}"
 )
