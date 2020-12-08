@@ -20,10 +20,9 @@ def all_yess(group: List[str]) -> int:
     return len(yess)
 
 
-t0 = time.perf_counter()
-
 # 1. Find the questions combined for the group which were answered y.
-# 2. Count the number.
+
+t0 = time.perf_counter()
 
 groups: List[List[str]] = []
 
@@ -39,6 +38,9 @@ with open(sys.argv[1], "r") as f:
 
     # The last group is not followed by an empty line
     groups.append(group)
+
+
+# 2. Count the number.
 
 t1 = time.perf_counter()
 
