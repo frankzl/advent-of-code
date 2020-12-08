@@ -33,6 +33,11 @@ func ReadChallenge(challenge_id int) []string{
     return read_file(total_path)
 }
 
+func ReadChallengeTest(challenge_id int) []string{
+    total_path := path.Join(INPUT_PATH, fmt.Sprintf("%02d_test", challenge_id))
+    return read_file(total_path)
+}
+
 func ParsePart() int {
     partPtr := flag.Int("part", 1, "selected part")
     flag.Parse()
