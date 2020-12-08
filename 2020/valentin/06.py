@@ -11,21 +11,12 @@ from typing import List, Set
 
 
 def unique_yess(group: List[str]) -> int:
-    yess: Set[str] = set()
-    for answer in "".join(group):
-        yess.add(answer)
-    return len(yess)
-
-
-def all_yess_classic(group: List[str]) -> int:
-    yess: Set[str] = set(group[0])
-    for person in group[1:]:
-        yess = yess.intersection(set(person))
+    yess: Set[str] = reduce(lambda x, y: x.union(y), group, set())
     return len(yess)
 
 
 def all_yess(group: List[str]) -> int:
-    yess: Set[str] = reduce(lambda x, y: x.intersection(y), group[1:], set(group[0]))
+    yess: Set[str] = reduce(lambda x, y: x.intersection(y), group, set(group[0]))
     return len(yess)
 
 
