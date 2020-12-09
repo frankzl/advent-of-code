@@ -115,19 +115,40 @@ def get_parent_paths(bag: str) -> List[List[str]]:
 # roots: Set[str] = {p[-1] for p in paths}
 # t4 = time.perf_counter()
 
-# PART 2
+# PART 2: How many bags must a shiny gold bag contain?
 
-raise NotImplementedError()
+t3 = time.perf_counter()
+
+# Traverse through all children and sum up
+
+
+def count_children(bag: str) -> int:
+    children: Dict[str, int] = bag_containment[bag].children
+
+    sum: int = 0
+
+    # Recurse; recursion end is reached if no more children are available
+    for child, child_count in children.items():
+        # For each child, add the sum of its children plus one of myself
+        sum += child_count * (1 + count_children(child))
+
+    return sum
+
+
+children_count: int = count_children("shiny gold")
+
+
+t4 = time.perf_counter()
 
 
 from util import tf
 
 print(
-    f"Roots: {len(roots)}\n\n"
+    f"Number of children: {children_count}\n\n"
     f"Parse file and add p -> c relationships: {tf(t1-t0)}\n"
     f"Traverse to get c -> p relationships: {tf(t2-t1)}\n"
     f"Get all parent paths: {tf(t3-t2)}\n"
-    f"Get unique roots: {tf(t4-t3)}\n"
+    f"Get number of children: {tf(t4-t3)}\n"
     f"=========\n"
     f"Total: {tf(t4-t0)}"
 )
