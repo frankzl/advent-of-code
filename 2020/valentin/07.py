@@ -54,7 +54,7 @@ def parse_rule(rule_definition: str) -> Tuple[str, BagRule]:
         number, kind, _, _, rule = m2.groups()
 
         # Save rule
-        bag_rule.children[kind] = number
+        bag_rule.children[kind] = int(number)
 
     # We are done when all rules have been parsed and saved into `bag_rule`
     return parent, bag_rule
