@@ -65,9 +65,7 @@ t0 = time.perf_counter()
 bag_containment: Dict[str, BagRule] = dict()
 
 # First, we parse all in one direction (parent -> child)
-# with open(sys.argv[1], "r") as f:
-print("TEMP TEMP TEMP!")
-with open("input7small", "r") as f:
+with open(sys.argv[1], "r") as f:
     for l in f:
         parent: str
         rule: BagRule
@@ -86,22 +84,49 @@ for parent, rule in bag_containment.items():
 
 # B) Count the number.
 
-t2 = time.perf_counter()
-
 # First, we get all possible paths that end in shiny gold.
 
-raise NotImplementedError()
+t2 = time.perf_counter()
+
+
+def get_parent_paths(bag: str) -> List[List[str]]:
+    """ Return a list of paths from this bag to all potential root bags. """
+    parent_paths: List[List[str]] = list()
+
+    # Recursion end: No potential parents
+    #   => Skips for loop and returns empty list
+
+    for parent in bag_containment[bag].parents:
+        # a) Add path up to this parent
+        parent_paths.append([bag, parent])
+
+        # b) Recurse and add paths beyond this parent
+        for beyond_path in get_parent_paths(parent):
+            # Each beyond path starts with the given parent
+            parent_paths.append([bag, *beyond_path])
+
+    return parent_paths
+
+
+paths: List[List[str]] = get_parent_paths("shiny gold")
 
 # Second, we remove duplicates and count.
 
-raise NotImplementedError()
+t3 = time.perf_counter()
+
+roots: Set[str] = {p[-1] for p in paths}
+
+t4 = time.perf_counter()
 
 
 from util import tf
 
 print(
-    f"Result: {0}\n\n"
-    f"1-----------------------: {tf(t1-t0)}\n"
-    f"2: {tf(t2-t1)}\n"
-    f"Total: {tf(t2-t0)}"
+    f"Roots: {len(roots)}\n\n"
+    f"Parse file and add p -> c relationships: {tf(t1-t0)}\n"
+    f"Traverse to get c -> p relationships: {tf(t2-t1)}\n"
+    f"Get all parent paths: {tf(t3-t2)}\n"
+    f"Get unique roots: {tf(t4-t3)}\n"
+    f"=========\n"
+    f"Total: {tf(t4-t0)}"
 )
