@@ -82,7 +82,7 @@ for parent, rule in bag_containment.items():
         bag_containment[child].parents.append(parent)
 
 
-# B.1) Count the number.
+# B / PART 1: How many potential parent bags exist for a shiny gold bag?
 
 t2 = time.perf_counter()
 
@@ -106,8 +106,6 @@ def get_parent_paths(bag: str) -> List[List[str]]:
     return parent_paths
 
 
-# # PART 1: How many potential parent bags exist for a shiny gold bag?
-# #
 # # First, we get all possible paths that end in shiny gold.
 # paths: List[List[str]] = get_parent_paths("shiny gold")
 # # Second, we remove duplicates and count.
@@ -115,11 +113,7 @@ def get_parent_paths(bag: str) -> List[List[str]]:
 # roots: Set[str] = {p[-1] for p in paths}
 # t4 = time.perf_counter()
 
-# PART 2: How many bags must a shiny gold bag contain?
-
-t3 = time.perf_counter()
-
-# Traverse through all children and sum up
+# B / PART 2: How many bags must a shiny gold bag contain?
 
 
 def count_children(bag: str) -> int:
@@ -135,8 +129,9 @@ def count_children(bag: str) -> int:
     return sum
 
 
+t3 = time.perf_counter()
+# Traverse through all children and sum up
 children_count: int = count_children("shiny gold")
-
 
 t4 = time.perf_counter()
 
