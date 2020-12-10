@@ -1,7 +1,7 @@
 import re
 import sys
 import time
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List
 
 # Handheld Halting
 #
@@ -10,17 +10,24 @@ from typing import Any, Callable, Dict, List, Tuple
 # jmp = jump to instruction relative to current position
 # nop = do nothing
 
+
+class Instruction:
+    def __init__(self, operation: str, value: int, executed: bool = False) -> None:
+        self.operation = operation
+        self.value = value
+        self.executed = executed
+
+
 # GLOBALS
 accumulator: int = 0
-program: List[Tuple[str, int]] = []
+program: List[Instruction] = []
 instructions_executed: List[int] = []
-hit_detector: List[bool]
 
 # Run the program until it reaches the same instruction a second time.
 # Terminate and print accumulator value
 
 
-def parse_instruction(instruction_line: str) -> Tuple[str, int]:
+def parse_instruction(instruction_line: str) -> Instruction:
     # nop +0
     m = re.fullmatch(r"(\w+) (\+|-)(\d+)\n", instruction_line)
     if not m:
@@ -35,42 +42,39 @@ def parse_instruction(instruction_line: str) -> Tuple[str, int]:
     if sgn == "-":
         num = -num
 
-    return ins, num
+    return Instruction(operation=ins, value=num)
 
 
-def execute(instruction_idx: int) -> int:
+def execute(pointer: int) -> int:
     global accumulator
     global program
 
-    ins: str
-    num: int
-    ins, num = program[instruction_idx]
+    instruction: Instruction = program[pointer]
+    # Mark executed
+    program[pointer].executed = True
 
-    if ins == "nop":
-        return 1 + instruction_idx
-    elif ins == "jmp":
-        return num + instruction_idx
-    elif ins == "acc":
-        accumulator += num
-        return 1 + instruction_idx
+    if instruction.operation == "nop":
+        return 1 + pointer
+    elif instruction.operation == "jmp":
+        return instruction.value + pointer
+    elif instruction.operation == "acc":
+        accumulator += instruction.value
+        return 1 + pointer
     else:
-        raise ValueError(f"Unknown instruction: {ins}")
+        raise ValueError(f"Unknown operation: {instruction.operation}")
 
 
 def _roll_back_instruction(pointer: int) -> None:
     global program
     global accumulator
-    global hit_detector
 
-    ins: str
-    val: int
-    ins, val = program[pointer]
+    instruction: Instruction = program[pointer]
 
-    if ins == "acc":
+    if instruction.operation == "acc":
         # Reverse accumulation
-        accumulator -= val
+        accumulator -= instruction.value
 
-    hit_detector[pointer] = False
+    program[pointer].executed = False
 
 
 def roll_back(condition: Callable[[int], bool]):
@@ -99,22 +103,22 @@ def roll_back(condition: Callable[[int], bool]):
 def swap_jmp_nop(pointer: int):
     """ Swap the instruction the pointer points to. """
 
-    ins: Tuple[str, int] = program[pointer]
+    ins: Instruction = program[pointer]
 
-    if ins[0] == "jmp":
-        program[pointer] = "nop", ins[1]
+    if ins.operation == "jmp":
+        ins.operation = "nop"
+    elif ins.operation == "nop":
+        ins.operation = "jmp"
     else:
-        program[pointer] = "jmp", ins[1]
+        raise ValueError(f"Tried to swap {ins.operation}")
 
 
 t0 = time.perf_counter()
 
 with open(sys.argv[1], "r") as f:
     for l in f:
-        instruction: Tuple[str, int] = parse_instruction(l)
+        instruction = parse_instruction(l)
         program.append(instruction)
-
-hit_detector = [False] * len(program)
 
 t1 = time.perf_counter()
 
@@ -129,7 +133,7 @@ while True:
     if instruction_index >= len(program):
         break
 
-    if hit_detector[instruction_index]:
+    if program[instruction_index].executed:
         # If a change was tried, we first need to revert back to the state before it was changed
         if code_changed:
             # Revert change again
@@ -143,7 +147,7 @@ while True:
 
         # Roll back until first untried jmp or nop
         instruction_index = roll_back(
-            lambda p: program[p][0] in ["jmp", "nop"] and p not in past_changes
+            lambda p: program[p].operation in ["jmp", "nop"] and p not in past_changes
         )
         # Change position
         swap_jmp_nop(instruction_index)
@@ -153,7 +157,6 @@ while True:
         # Continue running
 
     instructions_executed.append(instruction_index)
-    hit_detector[instruction_index] = True
     instruction_index = execute(instruction_index)
 
 t2 = time.perf_counter()
