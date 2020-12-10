@@ -57,7 +57,45 @@ def execute(instruction_idx: int) -> int:
         raise ValueError(f"Unknown instruction: {ins}")
 
 
-def roll_back(invalid_changes: List[int]) -> int:
+def _roll_back_instruction(pointer: int) -> None:
+    global program
+    global accumulator
+    global hit_detector
+
+    ins: str
+    val: int
+    ins, val = program[pointer]
+
+    if ins == "acc":
+        # Reverse accumulation
+        accumulator -= val
+
+    hit_detector[pointer] = False
+
+
+def roll_back_pointer_to_index(target_index: int) -> int:
+    """
+    Roll back to the state where the pointer pointed to the given target index.
+    Assumes that the pointer is not yet on the target index!
+    """
+
+    global instructions_executed
+
+    pointer: int
+    # We assume that one instruction can always be safely rolled back.
+    while True:
+        pointer = instructions_executed.pop(-1)
+        # Reverse accumulation and reset hit_detector
+        _roll_back_instruction(pointer)
+
+        # break condition: target index reached
+        if pointer == target_index:
+            break
+
+    return pointer
+
+
+def roll_back_until_jmp_or_nop(invalid_changes: List[int]) -> int:
     """
     Roll back to the state before the last jmp or nop will be executed.
 
@@ -133,24 +171,14 @@ while True:
             code_changed = False
 
             # Go back to state before the change was tried
-            instruction_index = state["instruction_index"]
-            instructions_executed = state["instructions_executed"]
-            hit_detector = state["hit_detector"]
-            accumulator = state["accumulator"]
+            roll_back_pointer_to_index(past_changes[-1])
 
         # Roll back until first untried jmp or nop
-        instruction_index = roll_back(past_changes)
+        instruction_index = roll_back_until_jmp_or_nop(past_changes)
         # Change position
         swap_jmp_nop(instruction_index)
         code_changed = True
         past_changes.append(instruction_index)
-
-        # Save state to later revert if unsuccessful
-        state["accumulator"] = accumulator
-        state["instruction_index"] = instruction_index
-        state["instructions_executed"] = instructions_executed.copy()
-        state["hit_detector"] = hit_detector.copy()
-        # The program is changed with the swap function
 
         # Continue running
 
