@@ -130,6 +130,7 @@ while True:
         break
 
     if hit_detector[instruction_index]:
+        # If a change was tried, we first need to revert back to the state before it was changed
         if code_changed:
             # Revert change again
             swap_jmp_nop(past_changes[-1])
@@ -137,6 +138,8 @@ while True:
 
             # Go back to state before the change was tried
             instruction_index = roll_back(lambda p: p == past_changes[-1])
+
+            # Continue rolling back from the point of the unsuccessful change
 
         # Roll back until first untried jmp or nop
         instruction_index = roll_back(
