@@ -2,8 +2,7 @@ import re
 import sys
 import time
 from collections import namedtuple
-from functools import reduce
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
 # Handy Haversacks
 #
