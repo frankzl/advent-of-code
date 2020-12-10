@@ -10,10 +10,10 @@ from typing import List
 # - any following number must be sum of two numbers from the preamble
 # - sliding window, so for each index, the previous 25 numbers are its preamble
 
-# Find the first number that does not correspond to the encoding
+# Part 1: Find the first number that does not correspond to the encoding
 
-buffer: List[int] = []
 buffer_size: int = int(sys.argv[2])
+numbers: List[int] = []
 
 
 def valid_number(num: int, buffer: List[int]) -> bool:
@@ -26,33 +26,53 @@ def valid_number(num: int, buffer: List[int]) -> bool:
 
 t0 = time.perf_counter()
 
-current_number: int = -1
+invalid_value: int = -1
 
 with open(sys.argv[1], "r") as f:
     for l in f:
-        current_number = int(l[:-1])
+        value: int = int(l[:-1])
 
-        # Start by filling the buffer
-        if len(buffer) < buffer_size:
-            buffer.append(current_number)
-            continue
+        # Only start checking when buffer is large enough
+        if (
+            (len(numbers) >= buffer_size)
+            and (invalid_value != -1)
+            and (not valid_number(value, numbers[-(1 + buffer_size) : -1]))
+        ):
+            invalid_value = value
 
-        if not valid_number(current_number, buffer):
-            break
-
-        # Move buffer
-        buffer.pop(0)
-        buffer.append(current_number)
+        numbers.append(value)
 
 t1 = time.perf_counter()
+
+# Part 2: Find encryption weakness:
+#   a) Identify the first contiguous set of numbers that sum up to the invalid number.
+#   b) Add together the smallest and largest number in the range.
+
+range_start: int = -1
+range_end: int = -1
+
+for i in range(len(numbers)):
+    # j is the excluded stop index, meaning we need to start at i + 2 that nums[i:j] are at least 2 values
+    for j in range(i + 2, len(numbers)):
+        range_sum: int = sum(numbers[i:j])
+        if range_sum == invalid_value:
+            range_start = i
+            range_end = j - 1
+            break
+
+encryption_weakness: int = numbers[range_start] + numbers[range_end]
+
+t2 = time.perf_counter()
 
 
 from util import tf
 
 print(
-    f"First invalid value: {current_number}\n"
+    f"Part 1: Invalid number = {encryption_weakness}\n"
+    f"Part 2: Encryption weakness = {encryption_weakness}\n"
     f"\n"
-    f"Parse file and check: {tf(t1-t0)}\n"
+    f"Parse file and find invalid value: {tf(t1-t0)}\n"
+    f"Identify encryption weakness: {tf(t2-t1)}\n"
     f"=========\n"
-    f"Total: {tf(t1-t0)}"
+    f"Total: {tf(t2-t0)}"
 )
