@@ -54,31 +54,32 @@ def count_joltage_steps(adapters: List[int]) -> int:
 # Part 2
 
 
-def count_distinct_chains(adapters: List[int], start: int, end: int) -> int:
-    # Recurse into possible steps and sum up
-    chain_count: int = 0
+def count_chain_graph(adapters: List[int], start: int, end: int) -> int:
+    """ Count chains based on a graph. Assumes adapters list is sorted. """
+    adapters = [start] + adapters + [end]
+    valid_path_count: List[int] = [0] * len(adapters)
 
-    for i in range(len(adapters)):
+    # There is one valid path "to" the start
+    valid_path_count[0] = 1
+
+    for i in range(1, len(adapters)):
         adp: int = adapters[i]
-        delta: int = adp - start
+        paths_to_self: int = 0
 
-        if delta <= 0:
-            raise ValueError("Invalid step")
-        elif delta > 3:
-            # Input list is sorted, so we have reached the end
-            break
+        for j in range(i - 1, -1, -1):
+            prev: int = adapters[j]
+            # First non-match means we found all valid paths
+            if (adp - prev) not in [1, 2, 3]:
+                break
+            paths_to_self += valid_path_count[j]
 
-        # Valid if delta in [1, 3]
-        chain_count += count_distinct_chains(adapters[i + 1 :], start=adp, end=end)
+        # Done counting valid paths
+        valid_path_count[i] = paths_to_self
 
-    # Recursion end: List is empty
-    if not adapters and ((end - start) in [1, 2, 3]):
-        return 1
-
-    return chain_count
+    return valid_path_count[-1]
 
 
-chain_count: int = count_distinct_chains(adapters, start=0, end=device)
+chain_count: int = count_chain_graph(adapters, start=0, end=device)
 
 t2 = time.perf_counter()
 
