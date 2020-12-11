@@ -46,12 +46,14 @@ def count_joltage_steps(adapters: List[int]) -> int:
     return deltas[1] * deltas[3]
 
 
-# result: int = count_joltage_steps(adapters + [device])
+joltage_step_result: int = count_joltage_steps(adapters + [device])
 
 # B) Find all possible chains that connect the socket to the device
 #    and count the number of distinct chains.
 
 # Part 2
+
+t2 = time.perf_counter()
 
 
 def count_chain_graph(adapters: List[int], start: int, end: int) -> int:
@@ -81,16 +83,18 @@ def count_chain_graph(adapters: List[int], start: int, end: int) -> int:
 
 chain_count: int = count_chain_graph(adapters, start=0, end=device)
 
-t2 = time.perf_counter()
+t3 = time.perf_counter()
 
 
 from util import tf
 
 print(
-    f"Number of distinct chains = {chain_count}\n"
+    f"Part 1: Joltage steps = {joltage_step_result}\n"
+    f"Part 2: Number of distinct chains = {chain_count}\n"
     f"\n"
     f"Parse file and collect adapters: {tf(t1-t0)}\n"
-    f"Count chains: {tf(t2-t1)}\n"
+    f"Count joltage steps: {tf(t2-t1)}\n"
+    f"Count chains: {tf(t3-t2)}\n"
     f"=====\n"
-    f"Total: {tf(t2-t0)}"
+    f"Total: {tf(t3-t0)}"
 )
