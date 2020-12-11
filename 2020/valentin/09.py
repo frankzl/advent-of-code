@@ -35,8 +35,10 @@ with open(sys.argv[1], "r") as f:
         # Only start checking when buffer is large enough
         if (
             (len(numbers) >= buffer_size)
-            and (invalid_value != -1)
-            and (not valid_number(value, numbers[-(1 + buffer_size) : -1]))
+            and (invalid_value == -1)
+            and (
+                not valid_number(value, numbers[-buffer_size:])
+            )  # slice until end, as number is not appended yet
         ):
             invalid_value = value
 
@@ -48,19 +50,20 @@ t1 = time.perf_counter()
 #   a) Identify the first contiguous set of numbers that sum up to the invalid number.
 #   b) Add together the smallest and largest number in the range.
 
-range_start: int = -1
-range_end: int = -1
 
-for i in range(len(numbers)):
-    # j is the excluded stop index, meaning we need to start at i + 2 that nums[i:j] are at least 2 values
-    for j in range(i + 2, len(numbers)):
-        range_sum: int = sum(numbers[i:j])
-        if range_sum == invalid_value:
-            range_start = i
-            range_end = j - 1
-            break
+def find_range() -> List[int]:
+    for i in range(len(numbers)):
+        for j in range(i + 2, len(numbers) + 1):
+            found_rng: List[int] = numbers[i:j]
+            range_sum: int = sum(found_rng)
+            if range_sum == invalid_value:
+                return found_rng
 
-encryption_weakness: int = numbers[range_start] + numbers[range_end]
+    raise RuntimeError("NOT FOUND!")
+
+
+found_rng: List[int] = find_range()
+encryption_weakness: int = min(found_rng) + max(found_rng)
 
 t2 = time.perf_counter()
 
@@ -68,7 +71,7 @@ t2 = time.perf_counter()
 from util import tf
 
 print(
-    f"Part 1: Invalid number = {encryption_weakness}\n"
+    f"Part 1: Invalid number = {invalid_value}\n"
     f"Part 2: Encryption weakness = {encryption_weakness}\n"
     f"\n"
     f"Parse file and find invalid value: {tf(t1-t0)}\n"
