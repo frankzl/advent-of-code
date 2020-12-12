@@ -134,7 +134,39 @@ def get_surrounding_seats(row: int, col: int) -> List[Tuple[int, int]]:
 
 
 # Part 2: The first seat in each direction
-# TODO
+def get_first_seat_in_direction(
+    row: int, col: int, direction: Tuple[int, int]
+) -> Optional[Tuple[int, int]]:
+    global seat_map
+    r: int = row
+    c: int = col
+    while True:
+        r += direction[0]
+        c += direction[1]
+        # Reached the end of the map
+        if r < 0 or r >= len(seat_map) or c < 0 or c >= len(seat_map[r]):
+            return None
+
+        if seat_map[r][c].is_seat():
+            return r, c
+
+
+def get_first_seats_in_each_direction(row: int, col: int) -> List[Tuple[int, int]]:
+    seats: List[Tuple[int, int]] = []
+    for direction in [
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+    ]:
+        direction = cast(Tuple[int, int], direction)
+        if seat := get_first_seat_in_direction(row, col, direction):
+            seats.append(seat)
+    return seats
 
 
 def set_visible_seats(
@@ -150,12 +182,11 @@ def set_visible_seats(
 seat_limit: int
 
 # Part 1
-seat_limit = 4
-set_visible_seats(seat_positions, seat_getter=get_surrounding_seats)
+# seat_limit = 4
+# set_visible_seats(seat_positions, seat_getter=get_surrounding_seats)
 # Part 2
-# seat_limit = 5
-# set_visible_seats(seat_positions, seat_getter=get_first_seats_in_each_direction)
-
+seat_limit = 5
+set_visible_seats(seat_positions, seat_getter=get_first_seats_in_each_direction)
 
 t3 = time.perf_counter()
 
@@ -174,7 +205,7 @@ t5 = time.perf_counter()
 from util import tf
 
 print(
-    f"Part 1: Occupied seats = {occupied_seats}\n"
+    f"Part 2: Occupied seats = {occupied_seats}\n"
     f"\n"
     f"Parse file: {tf(t1-t0)}\n"
     f"Get seat positions: {tf(t2-t1)}\n"
