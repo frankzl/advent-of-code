@@ -1,6 +1,9 @@
 import sys
 import time
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from itertools import combinations_with_replacement
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, cast
+
+# pylint: disable=unsubscriptable-object
 
 # Seating System
 #
@@ -16,14 +19,41 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 t0 = time.perf_counter()
 
-seat_map: List[List[str]] = []
+
+class Position:
+    def __init__(self, state: str):
+        self.state: str = state
+        self.visible_seats: List[Tuple[int, int]] = []
+        self._initialized: bool = False
+
+    def set_visible_seats(self, visible: List[Tuple[int, int]]) -> None:
+        self.visible_seats = visible
+        self._initialized = True
+
+    def is_occupied_seat(self) -> bool:
+        return self.state == "#"
+
+    def is_empty_seat(self) -> bool:
+        return self.state == "L"
+
+    def is_seat(self) -> bool:
+        return self.is_occupied_seat() or self.is_empty_seat()
+
+    def get_visible_seats(self, seat_map):
+        # type: (List[List[Position]]) -> List[Position]
+        if not self._initialized:
+            raise RuntimeError()
+        return [seat_map[i][j] for i, j in self.visible_seats]
+
+
+seat_map: List[List[Position]] = []
 
 with open(sys.argv[1], "r") as f:
     for l in f:
-        seat_map.append(list(l[:-1]))
+        seat_map.append([Position(state=s) for s in l[:-1]])
 
 
-def iterate(seat_map: List[List[str]]) -> Iterable[Tuple[int, int, str]]:
+def iterate(seat_map: List[List[Position]]) -> Iterable[Tuple[int, int, Position]]:
     for i in range(len(seat_map)):
         for j in range(len(seat_map[i])):
             yield i, j, seat_map[i][j]
@@ -32,46 +62,32 @@ def iterate(seat_map: List[List[str]]) -> Iterable[Tuple[int, int, str]]:
 t1 = time.perf_counter()
 
 
-is_occupied_seat: Callable[[str], bool] = lambda x: x == "#"
-is_empty_seat: Callable[[str], bool] = lambda x: x == "L"
-is_seat: Callable[[str], bool] = lambda x: is_occupied_seat(x) or is_empty_seat(x)
-
-
-def get_seat_positions(seat_map: List[List[str]]) -> Dict[int, List[int]]:
+def get_seat_positions(seat_map: List[List[Position]]) -> Dict[int, List[int]]:
     seat_positions: Dict[int, List[int]] = {i: [] for i in range(len(seat_map))}
 
-    for i, j, seat in iterate(seat_map):
-        if is_seat(seat):
+    for i, j, position in iterate(seat_map):
+        if position.is_seat():
             seat_positions[i].append(j)
 
     return seat_positions
 
 
-def simulate_seat(seat_map: List[List[str]], row: int, col: int) -> Optional[str]:
-    min_row: int = max(0, row - 1)
-    min_col: int = max(0, col - 1)
-    max_row: int = min(row + 1, len(seat_map) - 1)
-    max_col: int = min(col + 1, len(seat_map[max_row]) - 1)
+def simulate_seat(row: int, col: int, seat_limit: int) -> Optional[str]:
+    global seat_map
+    own_seat: Position = seat_map[row][col]
 
-    occupied: int = 0
-    for i in range(min_row, max_row + 1):
-        for j in range(min_col, max_col + 1):
-            if i == row and j == col:
-                continue
+    visible_seats: List[Position] = own_seat.get_visible_seats(seat_map)
+    occupied: int = sum([1 if s.is_occupied_seat() else 0 for s in visible_seats])
 
-            if is_occupied_seat(seat_map[i][j]):
-                occupied += 1
-
-    own_seat: str = seat_map[row][col]
-    if is_empty_seat(own_seat) and occupied == 0:
+    if own_seat.is_empty_seat() and occupied == 0:
         return "#"
-    elif is_occupied_seat(own_seat) and occupied >= 4:
+    elif own_seat.is_occupied_seat() and occupied >= seat_limit:
         return "L"
     else:
         return None
 
 
-def simulate(seat_positions: Dict[int, List[int]]) -> bool:
+def simulate(seat_positions: Dict[int, List[int]], seat_limit: int) -> bool:
     """ Simulate one round. Returns flag denoting if any change happened. """
     global seat_map
 
@@ -81,11 +97,11 @@ def simulate(seat_positions: Dict[int, List[int]]) -> bool:
     for i, js in seat_positions.items():
         # change_occurred |= any([simulate_seat(seat_map_copy, row=i, col=j) for j in js])
         for j in js:
-            if change := simulate_seat(seat_map, row=i, col=j):
+            if change := simulate_seat(row=i, col=j, seat_limit=seat_limit):
                 changes.append((i, j, change))
 
-    for i, j, new_seat in changes:
-        seat_map[i][j] = new_seat
+    for i, j, new_state in changes:
+        seat_map[i][j].state = new_state
 
     return len(changes) > 0
 
@@ -94,14 +110,65 @@ seat_positions: Dict[int, List[int]] = get_seat_positions(seat_map=seat_map)
 
 t2 = time.perf_counter()
 
-while simulate(seat_positions):
-    pass
+# Set visible seats
+
+# Part 1: All surrounding seats
+def get_surrounding_seats(row: int, col: int) -> List[Tuple[int, int]]:
+    """ Get seats that immediately neighbor the given coordinate. """
+    min_row: int = max(0, row - 1)
+    min_col: int = max(0, col - 1)
+    max_row: int = min(row + 1, len(seat_map) - 1)
+    max_col: int = min(col + 1, len(seat_map[max_row]) - 1)
+
+    seats: List[Tuple[int, int]] = []
+
+    for i in range(min_row, max_row + 1):
+        for j in range(min_col, max_col + 1):
+            if i == row and j == col:
+                continue
+
+            if seat_map[i][j].is_seat():
+                seats.append((i, j))
+
+    return seats
+
+
+# Part 2: The first seat in each direction
+# TODO
+
+
+def set_visible_seats(
+    seat_positions: Dict[int, List[int]],
+    seat_getter: Callable[[int, int], List[Tuple[int, int]]],
+):
+    global seat_map
+    for i, js in seat_positions.items():
+        for j in js:
+            seat_map[i][j].set_visible_seats(seat_getter(i, j))
+
+
+seat_limit: int
+
+# Part 1
+seat_limit = 4
+set_visible_seats(seat_positions, seat_getter=get_surrounding_seats)
+# Part 2
+# seat_limit = 5
+# set_visible_seats(seat_positions, seat_getter=get_first_seats_in_each_direction)
+
 
 t3 = time.perf_counter()
 
-occupied_seats: int = sum([row.count("#") for row in seat_map])
+while simulate(seat_positions, seat_limit=seat_limit):
+    pass
 
 t4 = time.perf_counter()
+
+occupied_seats: int = sum(
+    [sum([p.is_occupied_seat() for p in row]) for row in seat_map]
+)
+
+t5 = time.perf_counter()
 
 
 from util import tf
@@ -111,8 +178,9 @@ print(
     f"\n"
     f"Parse file: {tf(t1-t0)}\n"
     f"Get seat positions: {tf(t2-t1)}\n"
-    f"Simulate: {tf(t3-t2)}\n"
-    f"Count occupied seats: {tf(t4-t3)}\n"
+    f"Get neighbors: {tf(t3-t2)}\n"
+    f"Simulate: {tf(t4-t3)}\n"
+    f"Count occupied seats: {tf(t5-t4)}\n"
     f"=====\n"
     f"Total: {tf(t3-t0)}"
 )
