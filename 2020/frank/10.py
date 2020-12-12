@@ -1,4 +1,4 @@
-with open('input/09', 'r') as reader:
+with open('input/10', 'r') as reader:
     text = reader.read()
 
 sorted_adapters = sorted([int(i) for i in (text.split("\n")[:-1])])
