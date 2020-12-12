@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import Callable, Dict, List
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 # Seating System
 #
@@ -22,6 +22,13 @@ with open(sys.argv[1], "r") as f:
     for l in f:
         seat_map.append(list(l[:-1]))
 
+
+def iterate(seat_map: List[List[str]]) -> Iterable[Tuple[int, int, str]]:
+    for i in range(len(seat_map)):
+        for j in range(len(seat_map[i])):
+            yield i, j, seat_map[i][j]
+
+
 t1 = time.perf_counter()
 
 
@@ -33,15 +40,14 @@ is_seat: Callable[[str], bool] = lambda x: is_occupied_seat(x) or is_empty_seat(
 def get_seat_positions(seat_map: List[List[str]]) -> Dict[int, List[int]]:
     seat_positions: Dict[int, List[int]] = {i: [] for i in range(len(seat_map))}
 
-    for i in range(len(seat_map)):
-        for j in range(len(seat_map[i])):
-            if is_seat(seat_map[i][j]):
-                seat_positions[i].append(j)
+    for i, j, seat in iterate(seat_map):
+        if is_seat(seat):
+            seat_positions[i].append(j)
 
     return seat_positions
 
 
-def simulate_seat(seat_map: List[List[str]], row: int, col: int) -> bool:
+def simulate_seat(seat_map: List[List[str]], row: int, col: int) -> Optional[str]:
     min_row: int = max(0, row - 1)
     min_col: int = max(0, col - 1)
     max_row: int = min(row + 1, len(seat_map) - 1)
@@ -58,48 +64,44 @@ def simulate_seat(seat_map: List[List[str]], row: int, col: int) -> bool:
 
     own_seat: str = seat_map[row][col]
     if is_empty_seat(own_seat) and occupied == 0:
-        seat_map[row][col] = "#"
-        return True
+        return "#"
     elif is_occupied_seat(own_seat) and occupied >= 4:
-        seat_map[row][col] = "L"
-        return True
+        return "L"
     else:
-        return False
+        return None
 
 
 def simulate(seat_positions: Dict[int, List[int]]) -> bool:
-    """ Simulate one round. Returns if any change happened. """
+    """ Simulate one round. Returns flag denoting if any change happened. """
     global seat_map
 
-    change_occurred: bool = False
+    # We need a copy to not influence later seats with in-place modifications.
+    changes: List[Tuple[int, int, str]] = []
 
     for i, js in seat_positions.items():
+        # change_occurred |= any([simulate_seat(seat_map_copy, row=i, col=j) for j in js])
         for j in js:
-            change_occurred |= simulate_seat(seat_map, row=i, col=j)
+            if change := simulate_seat(seat_map, row=i, col=j):
+                changes.append((i, j, change))
 
-    return change_occurred
+    for i, j, new_seat in changes:
+        seat_map[i][j] = new_seat
+
+    return len(changes) > 0
 
 
 seat_positions: Dict[int, List[int]] = get_seat_positions(seat_map=seat_map)
 
-for row in seat_map:
-    print(row)
-
-print("\n")
-
-for i in range(len(seat_map)):
-    for j in range(len(seat_map[i])):
-        print(simulate_seat(seat_map, i, j), end="")
-    print()
+t2 = time.perf_counter()
 
 while simulate(seat_positions):
     pass
 
-t2 = time.perf_counter()
+t3 = time.perf_counter()
 
 occupied_seats: int = sum([row.count("#") for row in seat_map])
 
-t3 = time.perf_counter()
+t4 = time.perf_counter()
 
 
 from util import tf
@@ -108,8 +110,9 @@ print(
     f"Part 1: Occupied seats = {occupied_seats}\n"
     f"\n"
     f"Parse file: {tf(t1-t0)}\n"
-    f"Simulate: {tf(t2-t1)}\n"
-    f"Count occupied seats: {tf(t3-t2)}\n"
+    f"Get seat positions: {tf(t2-t1)}\n"
+    f"Simulate: {tf(t3-t2)}\n"
+    f"Count occupied seats: {tf(t4-t3)}\n"
     f"=====\n"
     f"Total: {tf(t3-t0)}"
 )
