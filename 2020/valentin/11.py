@@ -11,11 +11,13 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple, cast
 # - Floor (.), empty seat (L), or occupied seat (#)
 # - Placement rules
 #   + Empty seat with no occupied seats around: Occupied
-#   + Occupied seat with 4+ occupied seats adjacend: Emptied
+#   + Occupied seat is emptied if...
+#     * 4+ occupied seats adjacent (pt. 1)
+#     * 5+ occupied seats visible (pt. 2)
 #   + Otherwise: stable
 #   + Floor is stable
 
-# Part 1: Simulate until situation is stable; how many seats are occupied?
+# Simulate until situation is stable; how many seats are occupied?
 
 t0 = time.perf_counter()
 
