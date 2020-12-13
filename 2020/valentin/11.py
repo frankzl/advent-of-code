@@ -214,5 +214,5 @@ print(
     f"Simulate: {tf(t4-t3)}\n"
     f"Count occupied seats: {tf(t5-t4)}\n"
     f"=====\n"
-    f"Total: {tf(t3-t0)}"
+    f"Total: {tf(t5-t0)}"
 )
