@@ -57,7 +57,11 @@ def find_first_valid_timestamp() -> int:
     bus: int
     offset: int
     current_start: int = 0
-    base_skip: int = buses_with_offsets[0][0]  # the first bus ID defines the min skip
+    biggest_skip: int
+    skip_offset: int
+    biggest_skip, skip_offset = sorted(buses_with_offsets, key=lambda bo: bo[0])[0]
+
+    current_start -= skip_offset
     while True:
         try:
             for bus, offset in buses_with_offsets:
@@ -70,7 +74,7 @@ def find_first_valid_timestamp() -> int:
             # We found a valid slot
             return current_start
         except RuntimeError:
-            current_start += base_skip
+            current_start += biggest_skip
 
 
 first_valid_timestamp: int = find_first_valid_timestamp()
