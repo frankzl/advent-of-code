@@ -66,6 +66,10 @@ def find_first_valid_timestamp() -> int:
 
     # As we skip with a bus that has an offset, we have to offset our tested value accordingly.
     current_start -= skip_offset
+
+    # Sort again by offset, as this fails faster if the start is wrong.
+    buses_with_offsets = sorted(buses_with_offsets, key=lambda bi: bi[1])
+
     while True:
         try:
             for bus, offset in buses_with_offsets:
