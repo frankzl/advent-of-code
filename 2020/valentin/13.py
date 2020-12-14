@@ -47,6 +47,8 @@ if len(sys.argv) > 2:
 
 
 def find_first_valid_timestamp() -> int:
+    """ Naive solution: Iterate through with a base step and check if all values match. """
+
     global current_start
 
     buses_and_skips: List[Union[int, str]] = [
@@ -59,7 +61,6 @@ def find_first_valid_timestamp() -> int:
         reverse=True,
     )
 
-    # Idea: Go through buses, find earliest time for first, then second ... and restart if none is found.
     bus: int
     offset: int
     # We skip by the largest possible value in each step, a.k.a. the largest bus ID.
@@ -71,8 +72,9 @@ def find_first_valid_timestamp() -> int:
     current_start -= skip_offset
 
     # Sort again by offset, as this fails faster if the start is wrong.
-    buses_with_offsets = sorted(buses_with_offsets, key=lambda bi: bi[1])
+    buses_with_offsets = sorted(buses_with_offsets[1:], key=lambda bi: bi[1])
 
+    # Idea: Go through buses, find earliest time for first, then second ... and restart if none is found.
     while True:
         try:
             for bus, offset in buses_with_offsets:
