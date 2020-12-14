@@ -1,5 +1,6 @@
 import sys
 import time
+from itertools import count
 from typing import List, Tuple, Union
 
 # pylint: disable=unsubscriptable-object
@@ -46,17 +47,21 @@ if len(sys.argv) > 2:
     current_start = int(sys.argv[2])
 
 
-def find_first_valid_timestamp() -> int:
-    """ Naive solution: Iterate through with a base step and check if all values match. """
-
-    global current_start
-
+def get_buses_with_offsets() -> List[Tuple[int, int]]:
     buses_and_skips: List[Union[int, str]] = [
         int(b) if b != "x" else b for b in lines[1].split(",")
     ]
 
+    return [(int(b), i) for (i, b) in enumerate(buses_and_skips) if b != "x"]
+
+
+def find_first_valid_timestamp() -> int:
+    """ Naive solution (too slow!): Iterate through with a base step and check if all values match. """
+
+    global current_start
+
     buses_with_offsets: List[Tuple[int, int]] = sorted(
-        [(int(b), i) for (i, b) in enumerate(buses_and_skips) if b != "x"],
+        get_buses_with_offsets(),
         key=lambda bi: bi[0],
         reverse=True,
     )
@@ -90,7 +95,36 @@ def find_first_valid_timestamp() -> int:
             current_start += base_skip
 
 
-first_valid_timestamp: int = find_first_valid_timestamp()
+def get_cycle_offset(base: int, offset: int, step: int, find: int, f_off: int) -> float:
+    """ Get the cycle offset of the given base and step. """
+    for i in count(base * offset, base * step):
+        if (i + f_off) % find == 0:
+            return i / base
+
+    raise ValueError("Not found!")
+
+
+def iterate_cycles():
+    """ Find valid timestamp by finding common cycles and their offsets. """
+    buses_with_offsets: List[Tuple[int, int]] = get_buses_with_offsets()
+
+    base: int
+    offset: float
+    base, offset = buses_with_offsets[0]
+    step: int = 1
+    for find, off in buses_with_offsets[1:]:
+        offset = get_cycle_offset(
+            base=base, offset=offset, step=step, find=find, f_off=off
+        )
+        step *= find
+
+    result: float = base * offset
+    assert int(result) == result
+
+    return int(result)
+
+
+first_valid_timestamp: int = int(iterate_cycles())
 
 t3 = time.perf_counter()
 
