@@ -2,7 +2,7 @@ import re
 import sys
 import time
 from enum import Enum
-from typing import Dict, List, Tuple, Union, cast
+from typing import List, Tuple, Union, cast
 
 # pylint: disable=unsubscriptable-object
 
@@ -15,15 +15,11 @@ from typing import Dict, List, Tuple, Union, cast
 # - Starting position: Unknown, facing east
 
 
-class RelDirection(Enum):
+class MoveShip(Enum):
     FORWARD = "F"
 
 
-# TODO!
-DIR_TO_FACE: List[Tuple[int, str]] = list(zip(range(4), "NESW"))
-
-
-class AbsDirection(Enum):
+class MoveWaypoint(Enum):
     NORTH = "N"
     EAST = "E"
     SOUTH = "S"
@@ -32,40 +28,18 @@ class AbsDirection(Enum):
     LEFT = "L"
     RIGHT = "R"
 
-    def to_facing(self) -> int:
-        if self in [AbsDirection.LEFT, AbsDirection.RIGHT]:
-            raise ValueError("LEFT and RIGHT are not facing!")
-        return {
-            AbsDirection.NORTH: 0,
-            AbsDirection.EAST: 1,
-            AbsDirection.SOUTH: 2,
-            AbsDirection.WEST: 3,
-        }[self]
-
-    @staticmethod
-    def from_facing(facing):
-        # type: (int) -> AbsDirection
-        if facing not in range(4):
-            raise ValueError(f"Invalid facing value: {facing}")
-        return {
-            0: AbsDirection.NORTH,
-            1: AbsDirection.EAST,
-            2: AbsDirection.SOUTH,
-            3: AbsDirection.WEST,
-        }[facing]
-
     def get_trajectory_base(self) -> Tuple[int, int, int]:
-        if self is AbsDirection.NORTH:
+        if self is MoveWaypoint.NORTH:
             return (-1, 0, 0)
-        elif self is AbsDirection.SOUTH:
+        elif self is MoveWaypoint.SOUTH:
             return (1, 0, 0)
-        elif self is AbsDirection.WEST:
+        elif self is MoveWaypoint.WEST:
             return (0, -1, 0)
-        elif self is AbsDirection.EAST:
+        elif self is MoveWaypoint.EAST:
             return (0, 1, 0)
-        elif self is AbsDirection.LEFT:
+        elif self is MoveWaypoint.LEFT:
             return (0, 0, -1)
-        elif self is AbsDirection.RIGHT:
+        elif self is MoveWaypoint.RIGHT:
             return (0, 0, 1)
         else:
             raise ValueError(f"Unknown self: {self.name}")
@@ -75,31 +49,32 @@ class Instruction:
     def __init__(self, instruction_s: str, value: int) -> None:
         self.value: int = value
 
-        self.action: Union[AbsDirection, RelDirection]
+        self.action: Union[MoveWaypoint, MoveShip]
 
         try:
-            self.action = AbsDirection(instruction_s)
+            self.action = MoveWaypoint(instruction_s)
         except ValueError:
             # Intentionally provoke an exception if it does not match either
-            self.action = RelDirection(instruction_s)
+            self.action = MoveShip(instruction_s)
 
-        if (self.action in [AbsDirection.LEFT, AbsDirection.RIGHT]) and not (
+        if (self.action in [MoveWaypoint.LEFT, MoveWaypoint.RIGHT]) and not (
             self.value % 90 == 0
         ):
             raise ValueError("For LEFT and RIGHT, only multiples of 90 are allowed!")
 
-    def get_trajectory(self, facing: int) -> Tuple[int, int, int]:
+    def get_trajectory(self) -> Tuple[int, int, int]:
         """
         Translate the contained (action, value) pair to a trajectory.
+        Only valid for `MoveWaypoint` instructions.
 
         Returns: Trajectory in the form of (x, y, turn)
         """
         base_trajectory: Tuple[int, int, int]
-        if type(self.action) is RelDirection:
-            base_trajectory = AbsDirection.from_facing(facing).get_trajectory_base()
-        else:
-            self.action = cast(AbsDirection, self.action)
-            base_trajectory = self.action.get_trajectory_base()
+        if type(self.action) is MoveShip:
+            raise ValueError("Not valid for MoveShip action")
+
+        self.action = cast(MoveWaypoint, self.action)
+        base_trajectory = self.action.get_trajectory_base()
 
         r, c, a = base_trajectory  # row, col, angle
         # For a(ngle), the value is transformed to represent quarter turns with 1
@@ -107,22 +82,54 @@ class Instruction:
 
 
 class Ship:
-    def __init__(self, row: int, col: int, facing: int) -> None:
+    def __init__(self, row: int, col: int, wp_row: int, wp_col: int) -> None:
         self.row: int = row
         self.col: int = col
-        self.facing: int = facing
+        self.waypoint_row: int = wp_row
+        self.waypoint_col: int = wp_col
 
     def copy(self):
         # type: () -> Ship
-        return Ship(row=self.row, col=self.col, facing=self.facing)
+        return Ship(
+            row=self.row,
+            col=self.col,
+            wp_row=self.waypoint_row,
+            wp_col=self.waypoint_col,
+        )
 
     def move(self, instruction: Instruction):
-        trajectory: Tuple[int, int, int] = instruction.get_trajectory(self.facing)
-        self.row += trajectory[0]
-        self.col += trajectory[1]
-        # From a list of valid values ([0,1,2,3]), select the one that appears
-        # when going through in the direction the number of steps in trajectory.
-        self.facing = list(range(4))[(self.facing + trajectory[2]) % 4]
+        # Move by value * waypoint offset
+        if type(instruction.action) is MoveShip:
+            trajectory_row: int = instruction.value * self.waypoint_row
+            trajectory_col: int = instruction.value * self.waypoint_col
+            self.row += trajectory_row
+            self.col += trajectory_col
+        # Move waypoint by value or turn
+        elif type(instruction.action) is MoveWaypoint:
+            trajectory: Tuple[int, int, int] = instruction.get_trajectory()
+            self.waypoint_row += trajectory[0]
+            self.waypoint_col += trajectory[1]
+
+            # We have four options: no change, flip, turn right, turn left
+            number_of_turns: int = trajectory[2] % 4
+            temp_row: int = self.waypoint_row
+            if number_of_turns == 0:  # do nothing
+                return
+            elif number_of_turns == 1:  # turn right
+                # +col (east) -> +row (south) and opposite
+                self.waypoint_row = self.waypoint_col
+                # -row (north) -> +col (east) and opposite
+                self.waypoint_col = -(temp_row)
+            elif number_of_turns == 2:  # flip
+                self.waypoint_row *= -1
+                self.waypoint_col *= -1
+            elif number_of_turns == 3:  # turn left
+                # +col (east) -> -row (north) and opposite
+                self.waypoint_row = -(self.waypoint_col)
+                # -row (north) -> -col (west) and opposite
+                self.waypoint_col = temp_row
+            else:
+                raise ValueError(f"More than 3 turns: {number_of_turns}")
 
 
 t0 = time.perf_counter()
@@ -144,7 +151,8 @@ with open(sys.argv[1], "r") as f:
 
 t1 = time.perf_counter()
 
-ship_start: Ship = Ship(row=0, col=0, facing=AbsDirection("E").to_facing())
+# Ship: 0, 0; Waypoint: 1 north, 10 east
+ship_start: Ship = Ship(row=0, col=0, wp_row=-1, wp_col=10)
 ship: Ship = ship_start.copy()
 
 for instruction in instructions:
@@ -169,13 +177,11 @@ t3 = time.perf_counter()
 from util import tf
 
 print(
-    f"Part 1: Manhattan distance = {md}\n"
+    f"Manhattan distance = {md}\n"
     f"\n"
     f"Parse file: {tf(t1-t0)}\n"
     f"Move ship: {tf(t2-t1)}\n"
     f"Calculate Manhattan distance: {tf(t3-t2)}\n"
-    # f"Simulate: {tf(t4-t3)}\n"
-    # f"Count occupied seats: {tf(t5-t4)}\n"
     f"=====\n"
     f"Total: {tf(t3-t0)}"
 )
