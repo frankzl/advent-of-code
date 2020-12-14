@@ -43,8 +43,6 @@ t2 = time.perf_counter()
 
 # Part 2: Find earliest timestamp so that each tick the next bus from the list departs (x is empty)
 
-t3 = time.perf_counter()
-
 
 def find_first_valid_timestamp() -> int:
     buses_and_skips: List[Union[int, str]] = [
@@ -75,6 +73,8 @@ def find_first_valid_timestamp() -> int:
 
 
 first_valid_timestamp: int = find_first_valid_timestamp()
+
+t3 = time.perf_counter()
 
 
 from util import tf
