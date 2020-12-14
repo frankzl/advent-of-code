@@ -9,8 +9,6 @@ from typing import List, Tuple, Union
 # - Buses have ID that indicates the departure rhythm
 # - Schedule based on timestamp = number of minutes since reference time
 # - Timestamp 0: Every bus departs
-# -
-# -
 
 t0 = time.perf_counter()
 
@@ -43,8 +41,14 @@ t2 = time.perf_counter()
 
 # Part 2: Find earliest timestamp so that each tick the next bus from the list departs (x is empty)
 
+current_start: int = 0
+if len(sys.argv) > 2:
+    current_start = int(sys.argv[2])
+
 
 def find_first_valid_timestamp() -> int:
+    global current_start
+
     buses_and_skips: List[Union[int, str]] = [
         int(b) if b != "x" else b for b in lines[1].split(",")
     ]
@@ -58,7 +62,6 @@ def find_first_valid_timestamp() -> int:
     # Idea: Go through buses, find earliest time for first, then second ... and restart if none is found.
     bus: int
     offset: int
-    current_start: int = 0
     # We skip by the largest possible value in each step, a.k.a. the largest bus ID.
     base_skip: int
     skip_offset: int
