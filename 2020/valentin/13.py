@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import List, Optional, Tuple, Union, cast
+from typing import List, Tuple, Union
 
 # pylint: disable=unsubscriptable-object
 
