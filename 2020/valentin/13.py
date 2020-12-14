@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import List, Tuple, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
 # pylint: disable=unsubscriptable-object
 
@@ -58,25 +58,20 @@ def find_first_valid_timestamp() -> int:
     # Idea: Go through buses, find earliest time for first, then second ... and restart if none is found.
     bus: int
     offset: int
-    first_valid_timestamp: int = 0
+    current_start: int = 0
     while True:
         try:
             for bus, offset in buses_with_offsets:
-                earliest_bus_id, time_to_wait = find_earliest_and_time(
-                    depart_time=first_valid_timestamp, buses=[bus]
-                )
-                assert earliest_bus_id == bus  # remove later
-
-                if time_to_wait == offset:
+                if (current_start + offset) % bus == 0:
                     continue
 
                 # time_to_wait > offset means the schedule is invalid
                 raise RuntimeError()
 
             # We found a valid slot
-            return first_valid_timestamp
+            return current_start
         except RuntimeError:
-            first_valid_timestamp += 1
+            current_start += 1
 
 
 first_valid_timestamp: int = find_first_valid_timestamp()
