@@ -49,18 +49,22 @@ def find_first_valid_timestamp() -> int:
         int(b) if b != "x" else b for b in lines[1].split(",")
     ]
 
-    buses_with_offsets: List[Tuple[int, int]] = [
-        (int(b), i) for (i, b) in enumerate(buses_and_skips) if b != "x"
-    ]
+    buses_with_offsets: List[Tuple[int, int]] = sorted(
+        [(int(b), i) for (i, b) in enumerate(buses_and_skips) if b != "x"],
+        key=lambda bi: bi[0],
+        reverse=True,
+    )
 
     # Idea: Go through buses, find earliest time for first, then second ... and restart if none is found.
     bus: int
     offset: int
     current_start: int = 0
-    biggest_skip: int
+    # We skip by the largest possible value in each step, a.k.a. the largest bus ID.
+    base_skip: int
     skip_offset: int
-    biggest_skip, skip_offset = sorted(buses_with_offsets, key=lambda bo: bo[0])[0]
+    base_skip, skip_offset = buses_with_offsets[0]
 
+    # As we skip with a bus that has an offset, we have to offset our tested value accordingly.
     current_start -= skip_offset
     while True:
         try:
@@ -74,7 +78,7 @@ def find_first_valid_timestamp() -> int:
             # We found a valid slot
             return current_start
         except RuntimeError:
-            current_start += biggest_skip
+            current_start += base_skip
 
 
 first_valid_timestamp: int = find_first_valid_timestamp()
