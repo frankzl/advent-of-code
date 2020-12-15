@@ -41,10 +41,24 @@ t1 = time.perf_counter()
 
 
 class Memory:
-    def __init__(self):
-        self.mask: str = ""
+    def __init__(self) -> None:
+        self.max: str = ""
         # Default value for any key in a Counter is 0, which means we can easily sum up later.
         self.container: Counter[int] = Counter()
+
+    def update_mask(self, mask: str) -> None:
+        self.mask = mask
+
+    def write(self, address: int, value: int) -> None:
+        raise NotImplementedError("Abstract method")
+
+    def sum(self) -> int:
+        return sum(self.container.values())
+
+
+class MemoryPt1(Memory):
+    def __init__(self) -> None:
+        super().__init__()
 
     def _apply_mask(self, value: int) -> int:
         value_bin: str = bin(value)
@@ -57,41 +71,62 @@ class Memory:
 
         return int("".join(value_list), 2)
 
-    def update_mask(self, mask: str) -> None:
-        self.mask = mask
-
     def write(self, address: int, value: int) -> None:
-        value = self._apply_mask(value)
+        value = self._apply_mask(value=value)
         self.container[address] = value
 
-    def sum(self) -> int:
-        return sum(self.container.values())
+
+class MemoryPt2(Memory):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def _apply_mask(self, address: int) -> int:
+        raise NotImplementedError()
+
+    def write(self, address: int, value: int) -> None:
+        address = self._apply_mask(address=address)
+        self.container[address] = value
+        raise NotImplementedError()
 
 
-memory: Memory = Memory()
+def execute_instructions(
+    memory: Memory, commands: List[Union[str, Tuple[int, int]]]
+) -> int:
+    for command in commands:
+        if type(command) is str:
+            command = cast(str, command)
+            memory.update_mask(command)
+        elif type(command) is tuple:
+            command = cast(Tuple[int, int], command)
+            memory.write(*command)
+        else:
+            raise ValueError(f"Invalid type: {type(command)}")
 
-for command in commands:
-    if type(command) is str:
-        command = cast(str, command)
-        memory.update_mask(command)
-    elif type(command) is tuple:
-        command = cast(Tuple[int, int], command)
-        memory.write(*command)
-    else:
-        raise ValueError(f"Invalid type: {type(command)}")
+    return memory.sum()
 
-mem_sum: int = memory.sum()
+
+# Part 1:
+memory1: Memory = MemoryPt1()
+mem_sum_1: int = execute_instructions(memory=memory1, commands=commands)
 
 t2 = time.perf_counter()
+
+# Part 2:
+memory2: Memory = MemoryPt2()
+mem_sum_2: int = execute_instructions(memory=memory2, commands=commands)
+
+t3 = time.perf_counter()
 
 
 from util import tf
 
 print(
-    f"Part 1: Sum = {mem_sum}\n"
+    f"Part 1: Sum = {mem_sum_1}\n"
+    f"Part 2: Sum = {mem_sum_2}\n"
     f"\n"
     f"Parse file: {tf(t1-t0)}\n"
     f"Part 1: Calculate sum: {tf(t2-t1)}\n"
+    f"Part 2: Calculate sum: {tf(t3-t2)}\n"
     f"=====\n"
-    f"Total: {tf(t2-t0)}"
+    f"Total: {tf(t3-t0)}"
 )
