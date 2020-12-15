@@ -37,14 +37,17 @@ with open(sys.argv[1], "r") as f:
 
 t1 = time.perf_counter()
 
-# Part 1: What is the sum of all values left in memory after it completes?
-
 
 class Memory:
     def __init__(self) -> None:
         self.max: str = ""
         # Default value for any key in a Counter is 0, which means we can easily sum up later.
         self.container: Counter[int] = Counter()
+
+    def _int_to_maskable_str(self, val: int) -> List[str]:
+        value_bin: str = bin(val)
+        value_zfilled: str = (value_bin[2:]).zfill(len(self.mask))
+        return list(value_zfilled)
 
     def update_mask(self, mask: str) -> None:
         self.mask = mask
@@ -56,14 +59,15 @@ class Memory:
         return sum(self.container.values())
 
 
+# Part 1: Mask overwrites values at indices
+
+
 class MemoryPt1(Memory):
     def __init__(self) -> None:
         super().__init__()
 
     def _apply_mask(self, value: int) -> int:
-        value_bin: str = bin(value)
-        value_zfilled: str = (value_bin[2:]).zfill(len(self.mask))
-        value_list: List[str] = list(value_zfilled)
+        value_list: List[str] = self._int_to_maskable_str(value)
 
         for i, c in enumerate(self.mask):
             if c != "X":
@@ -76,17 +80,49 @@ class MemoryPt1(Memory):
         self.container[address] = value
 
 
+# Part 2: Mask serves as memory address decoder
+
+
 class MemoryPt2(Memory):
     def __init__(self) -> None:
         super().__init__()
 
-    def _apply_mask(self, address: int) -> int:
-        raise NotImplementedError()
+    def _apply_mask(self, address: int) -> List[str]:
+        # bit = 0 => corresponding bit is unchanged
+        # bit = 1 => overwrite bit with 1
+        # bit = X => corresponding bit is FLOATING
+
+        # FLOATING bit:
+        # - fluctuates
+        # - can take all possible values
+        # ==> multiple target addresses
+
+        address_listed: List[str] = self._int_to_maskable_str(address)
+
+        for i, c in enumerate(self.mask):
+            if c in "1X":
+                address_listed[i] = c
+            elif c != "0":
+                raise ValueError(f"Invalid char: {c}")
+
+        return address_listed
 
     def write(self, address: int, value: int) -> None:
-        address = self._apply_mask(address=address)
-        self.container[address] = value
-        raise NotImplementedError()
+        addresses_base: List[str] = self._apply_mask(address=address)
+        addresses: List[List[str]] = [[]]
+
+        for a in addresses_base:
+            for i in range(len(addresses)):
+                if a in "01":
+                    addresses[i].append(a)
+                elif a == "X":
+                    addresses.append(addresses[i] + ["0"])
+                    addresses[i].append("1")
+                else:
+                    raise ValueError(f"Unknown value: {a}")
+
+        for target in [int("".join(a), 2) for a in addresses]:
+            self.container[target] = value
 
 
 def execute_instructions(
